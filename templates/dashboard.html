@@ -1,0 +1,71 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Test Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f4; color: #333; }
+        .container { max-width: 1200px; margin: auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { color: #0056b3; text-align: center; margin-bottom: 30px; }
+        .run-button { display: block; width: 200px; margin: 20px auto; padding: 10px 15px; background-color: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; text-align: center; text-decoration: none; }
+        .run-button:hover { background-color: #218838; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background-color: #f2f2f2; color: #555; }
+        .status-PASS { color: green; font-weight: bold; }
+        .status-FAIL { color: red; font-weight: bold; }
+        .test-details { background-color: #e9ecef; margin-top: 5px; padding: 10px; border-radius: 4px; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>API Test Dashboard</h1>
+        <a href="/run" class="run-button">Run Tests Now</a>
+
+        <h2>Latest Test Runs</h2>
+        {% if runs %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Status</th>
+                    <th>Total</th>
+                    <th>Success</th>
+                    <th>Errors</th>
+                    <th>Avg Latency (ms)</th>
+                    <th>P95 Latency (ms)</th>
+                    <th>Error Rate (%)</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for run in runs %}
+                <tr>
+                    <td>{{ run.timestamp }}</td>
+                    <td class="status-{{ run.status }}">{{ run.status }}</td>
+                    <td>{{ run.total_tests }}</td>
+                    <td>{{ run.success_count }}</td>
+                    <td>{{ run.error_count }}</td>
+                    <td>{{ "%.2f"|format(run.avg_latency) }}</td>
+                    <td>{{ "%.2f"|format(run.p95_latency) }}</td>
+                    <td>{{ "%.2f"|format(run.error_rate) }}</td>
+                    <td>
+                        {% for result in run.results %}
+                            <div class="test-details">
+                                <strong>{{ result.test_name }}</strong>: <span class="status-{{ result.status }}">{{ result.status }}</span> ({{ "%.2f"|format(result.latency_ms) }} ms)
+                                {% if result.message %}<br/><em>Error:</em> {{ result.message }}{% endif %}
+                            </div>
+                        {% endfor %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>No test runs recorded yet. Click 'Run Tests Now' to perform the first test run.</p>
+        {% endif %}
+    </div>
+</body>
+</html>
