@@ -2,30 +2,39 @@
 import requests
 import time
 
-def make_request(method, url, params=None, json_data=None, headers=None, timeout=5, max_retries=1, delay_between_retries=1):
-    for i in range(max_retries + 1):
-        start_time = time.time()
-        try:
-            if method.upper() == 'GET':
-                response = requests.get(url, params=params, headers=headers, timeout=timeout)
-            elif method.upper() == 'POST':
-                response = requests.post(url, params=params, json=json_data, headers=headers, timeout=timeout)
-            else:
-                raise ValueError(f"Unsupported HTTP method: {method}")
+class APIClient:
+    def __init__(self, base_url, timeout=5, retries=1):
+        self.base_url = base_url
+        self.timeout = timeout
+        self.retries = retries
 
-            latency = (time.time() - start_time) * 1000  # Latency in ms
-            return response, latency, None # No error
+    def _make_request(self, method, endpoint, **kwargs):
+        url = f"{self.base_url}{endpoint}"
+        for attempt in range(self.retries + 1):
+            start_time = time.time()
+            try:
+                response = requests.request(method, url, timeout=self.timeout, **kwargs)
+                latency_ms = (time.time() - start_time) * 1000
+                return response, latency_ms
+            except requests.exceptions.Timeout:
+                latency_ms = (time.time() - start_time) * 1000
+                if attempt < self.retries:
+                    print(f"Timeout on {method} {url}, retrying...")
+                    time.sleep(1) # Simple backoff
+                else:
+                    raise ConnectionError(f"Request to {url} timed out after {self.retries + 1} attempts") from None
+            except requests.exceptions.RequestException as e:
+                latency_ms = (time.time() - start_time) * 1000
+                raise ConnectionError(f"Request to {url} failed: {e}") from e
 
-        except requests.exceptions.Timeout:
-            error_msg = f"Request timed out after {timeout} seconds"
-        except requests.exceptions.ConnectionError:
-            error_msg = "Connection error occurred"
-        except requests.exceptions.RequestException as e:
-            error_msg = f"An unexpected request error occurred: {e}"
-        
-        latency = (time.time() - start_time) * 1000 # Still measure latency even on error
-        print(f"Attempt {i+1}/{max_retries+1} failed for {url}: {error_msg}")
-        if i < max_retries:
-            time.sleep(delay_between_retries)
+    def get(self, endpoint, **kwargs):
+        return self._make_request('GET', endpoint, **kwargs)
 
-    return None, latency, error_msg # All retries failed
+    def post(self, endpoint, json=None, **kwargs):
+        return self._make_request('POST', endpoint, json=json, **kwargs)
+
+    def put(self, endpoint, json=None, **kwargs):
+        return self._make_request('PUT', endpoint, json=json, **kwargs)
+
+    def delete(self, endpoint, **kwargs):
+        return self._make_request('DELETE', endpoint, **kwargs)
